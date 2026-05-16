@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Account",
+      "description": "Represents a user (Admin, Teacher, or Parent) in the system.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "teacher", "parent"] },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "linkedCode": { "type": "string", "description": "The technical code used to active this session" },
+        "studentIds": { "type": "array", "description": "IDs of students linked to this parent" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role", "status"]
+    },
+    "Student": {
+      "title": "Student Profile",
+      "description": "Core profile for a student, containing rankings and scores.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "classId": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "robotAvatar": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "points": { "type": "number" },
+        "attendancePercentage": { "type": "number" },
+        "ranking": { "type": "number" },
+        "badges": { "type": "array" },
+        "grades": {
+          "type": "object",
+          "properties": {
+            "robotics": { "type": "number" },
+            "programming": { "type": "number" },
+            "arduino": { "type": "number" },
+            "artificialIntelligence": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "classId", "points"]
+    },
+    "Class": {
+      "title": "Class Room",
+      "description": "A group of students managed by a teacher.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "students": { "type": "array" }
+      },
+      "required": ["name", "teacherId"]
+    },
+    "Attendance": {
+      "title": "Attendance Record",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["present", "late", "absent"] },
+        "pointsAdded": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Behavior": {
+      "title": "Behavior Record",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "type": { "type": "string", "enum": ["excellent", "good", "bad"] },
+        "note": { "type": "string" },
+        "pointsAdded": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AccessCode": {
+      "title": "Access Code",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["teacher", "parent"] },
+        "name": { "type": "string", "description": "Target owner name" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User accounts" },
+    "/students/{studentId}": { "schema": "Student", "description": "Student master profiles" },
+    "/classes/{classId}": { "schema": "Class", "description": "Class structures" },
+    "/attendance/{recordId}": { "schema": "Attendance", "description": "Daily attendance logs" },
+    "/behavior/{recordId}": { "schema": "Behavior", "description": "Behavioral points and notes" },
+    "/homework/{homeworkId}": { "schema": "object", "description": "Class assignments" },
+    "/announcements/{annId}": { "schema": "object", "description": "System wide announcements" },
+    "/access_codes/{code}": { "schema": "AccessCode", "description": "Public lookup for login codes" }
+  }
+}

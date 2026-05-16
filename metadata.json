@@ -1,0 +1,8 @@
+{
+  "name": "نيوجيت روبوت - NewGate Robot",
+  "description": "نظام إدارة مدرسة الروبوتات والبرمجة المتطور - يدعم المعلمين والإداريين وأولياء الأمور مع نظام نقاط وتتبع ذكي.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}

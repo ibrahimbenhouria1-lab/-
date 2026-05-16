@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'anonymous');
+    }
+
+    // Get user data - note: avoid using this in list queries if possible
+    // But for role check, it's often necessary. We use get() which is allowed for single-doc lookup.
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserData().role == 'admin';
+    }
+
+    function isTeacher() {
+      return isSignedIn() && getUserData().role == 'teacher';
+    }
+
+    function isParent() {
+      return isSignedIn() && getUserData().role == 'parent';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Validations ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role', 'status', 'createdAt'])
+        && data.name is string && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 100
+        && data.role in ['admin', 'teacher', 'parent']
+        && data.status in ['active', 'inactive']
+        && (data.createdAt == request.time || data.createdAt is timestamp);
+    }
+
+    function isValidClass(data) {
+      return data.keys().hasAll(['name', 'teacherId', 'studentIds', 'createdAt'])
+        && data.name is string && data.name.size() <= 100
+        && data.teacherId is string
+        && data.studentIds is list
+        && (data.createdAt == request.time || data.createdAt is timestamp);
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['name', 'classId', 'points', 'level', 'xp'])
+        && data.name is string && data.name.size() <= 100
+        && data.classId is string
+        && data.points is int
+        && data.level is int
+        && data.xp is int;
+    }
+
+    function isValidBehavior(data) {
+      return data.keys().hasAll(['studentId', 'teacherId', 'type', 'pointsAdded', 'timestamp'])
+        && data.studentId is string
+        && data.teacherId == request.auth.uid
+        && data.type is string
+        && data.pointsAdded is int
+        && (data.timestamp == request.time || data.timestamp is timestamp);
+    }
+
+    // --- Match Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin() || (isSignedIn() && userId == request.auth.uid);
+      allow create: if (isAdmin() || (isSignedIn() && userId == request.auth.uid)) && isValidUser(request.resource.data);
+      allow update: if (isAdmin() || (isSignedIn() && userId == request.auth.uid)) && (
+        isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoUrl', 'robotAvatar']))
+      );
+    }
+
+    match /classes/{classId} {
+      allow list: if isAdmin() || isTeacher();
+      allow get: if isSignedIn();
+      allow create: if isAdmin() && isValidClass(request.resource.data);
+      allow update: if (isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid)) 
+                   && isValidClass(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow create: if (isAdmin() || isTeacher()) && isValidStudent(request.resource.data);
+      allow update: if (isAdmin() || isTeacher()) && isValidStudent(request.resource.data);
+    }
+
+    match /behavior/{bhId} {
+      allow list: if isAdmin() || isTeacher();
+      allow get: if isSignedIn();
+      allow create: if (isAdmin() || isTeacher()) && isValidBehavior(request.resource.data);
+    }
+
+    match /attendance/{atId} {
+      allow list: if isAdmin() || isTeacher();
+      allow get: if isSignedIn();
+      allow create: if (isAdmin() || isTeacher());
+    }
+  }
+}
